@@ -1,3 +1,8 @@
+// define port
+#define TEMP_PORT A5
+#define TDS_SENSOR_PORT A1
+#define PH_SENSOR_PORT A0
+
 // I2C lib
 #include <Wire.h>
 #include <EEPROM.h>
@@ -5,11 +10,6 @@
 #include <U8g2lib.h>
 #include <U8x8lib.h>
 #include <math.h>
-
-// define port
-#define TEMP_PORT A5
-#define TDS_SENSOR_PORT A1
-#define PH_SENSOR_PORT A0
 
 // pH metter initial
 float b;

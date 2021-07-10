@@ -101,30 +101,25 @@ float read_sensor_value() {
 void loop() {
   u8g2.firstPage();
   do {
-//    pHvalue = pHmetter();
-//    String str_pH_value = "";
-//    str_pH_value.concat(pHvalue);
-//    Serial.print("pH: "); Serial.println(str_pH_value);
-//    delay(100);
-    
-//    int tds_vl = round(read_sensor_value());
-//    String str_tds_vl = String(tds_vl);
-//    delay(100);
-//    
-//    draw("1234", str_pH_value, "23");
-//
-    temperature = Thermistor(analogRead(TEMP_PORT));
-    int tmp = round(temperature);
-    String str_tmp = String(tmp);
+    pHvalue = pHmetter();
+    String str_pH_value = "";
+    str_pH_value.concat(pHvalue);
     delay(100);
 
-    draw("1234", "12", str_tmp);
-    
-//    draw(str_tds_vl, str_pH_value, str_tmp);
-//    Serial.print("tsd: "); Serial.println(tds_vl);
-//    Serial.print("tmp: "); Serial.println(temperature);
+    int tds_vl = round(read_sensor_value());
+    String str_tds_vl = "";
+    str_tds_vl.concat(tds_vl);
+    delay(100);
 
-    delay(700);
+    int tmp = round(Thermistor(analogRead(TEMP_PORT)));
+    String str_tmp = "";
+    str_tmp.concat(tmp);
+    delay(100);
+
+    // draw_base();
+    draw_value(str_tds_vl, str_tmp, str_pH_value);
+    //draw_value("2345", "123", "7.6");
+    delay(1700);
   } while ( u8g2.nextPage() );
 }
 
@@ -139,34 +134,35 @@ void draw_cover_box() {
 
 void draw_base_text() {
   u8g2.setFont(u8g2_font_helvB10_tf);
-  u8g2.drawUTF8(100, 29, DEGREE_SYMBOL);
+  u8g2.drawUTF8(100, 27, DEGREE_SYMBOL);
 
   u8g2.setFont(u8g2_font_profont11_tr);
   u8g2.drawStr(4, 10, "TDS (400)");
   u8g2.drawStr(44, 25, "PPM");
   u8g2.drawStr(66, 10, "Temp.");
-  u8g2.drawStr(107, 25, "C");
-  u8g2.drawStr(4, 42, "pH  (6.0)");
-  u8g2.drawStr(66, 42, "Trung Tran");
+  u8g2.drawStr(110, 23, "C");
+
+  u8g2.drawStr(5, 42, "pH  (6.0)");
 }
 
 void draw_value(String tds_val, String tmp_val, String pH_val) {
-  u8g2.setFont(u8g2_font_t0_15b_mn);
-
-  int tds_start = 34 - (tds_val.length() - 1) * 8;
-  u8g2.drawStr(tds_start, 28, tds_val.c_str());
-
-  int tmp_start = 90 - (tmp_val.length() - 1) * 8;
-  u8g2.drawStr(tmp_start, 28, tmp_val.c_str());
-
-  int pH_start = 40 - (pH_val.length() - 1) * 8;
-  u8g2.drawStr(pH_start, 56, pH_val.c_str());
-
-}
-
-void draw(String tds, String pH, String temp) {
   u8g2.clearBuffer();
   draw_cover_box();
   draw_base_text();
-  draw_value(tds, temp, pH);
+
+  Serial.print(pH_val); Serial.print(": "); Serial.println(pH_val.length());
+  Serial.print(tds_val); Serial.print(": "); Serial.println(tds_val.length());
+  Serial.print(tmp_val); Serial.print(": "); Serial.println(tmp_val.length());
+
+  u8g2.setFont(u8g2_font_t0_15b_mn);
+
+  int tds_start = 34 - (tds_val.length() - 1) * 8;
+  u8g2.drawStr(tds_start, 27, tds_val.c_str());
+
+  int tmp_start = 90 - (tmp_val.length() - 1) * 8;
+  u8g2.drawStr(tmp_start, 27, tmp_val.c_str());
+
+  int pH_start = 40 - (pH_val.length() - 1) * 8;
+  u8g2.drawStr(pH_start, 58, pH_val.c_str());
+
 }

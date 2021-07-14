@@ -8,10 +8,10 @@
 #include <Wire.h>
 #endif
 
-U8G2_ST7920_128X64_F_HW_SPI u8g2(U8G2_R0, /* CS=*/ 10, /* reset=*/ 8);
+U8G2_ST7920_128X64_F_SW_SPI u8g2(U8G2_R0, /* clock=*/ 13, /* data=*/ 11, /* CS=*/ 10, /* reset=*/ 8);
 
 void setup(void) {
-  u8g2.begin(/*Select=*/ 3, /*Right/Next=*/ 4, /*Left/Prev=*/ 5, /*Up=*/ A0, /*Down=*/ 6, /*Home/Cancel=*/ 7); // Arduboy 10 (Production)
+  u8g2.begin(/*Select=*/ 17, /*Right/Next=*/ 21, /*Left/Prev=*/ 27, /*Up=*/ 23, /*Down=*/ 25, /*Home/Cancel=*/ 19); // Arduboy 10 (Production)
   Serial.begin(9600);
   u8g2.setFont(u8g2_font_profont11_tr);
 }
@@ -42,10 +42,11 @@ uint8_t tds_selection = 0;
 uint8_t pH_selection = 0;
 uint8_t pump_selection = 0;
 
-uint8_t inputVal;
+uint16_t inputVal = 1234;
 uint8_t retVal;
 
 void loop(void) {
+  Serial.println(main_selection);
   main_selection = u8g2.userInterfaceSelectionList(
                      "MAIN MENU",
                      main_selection,
@@ -57,13 +58,8 @@ void loop(void) {
                       tds_selection,
                       tds_menu);
     if (tds_selection == 1) {
-      retVal = u8g2.userInterfaceInputValue(
-                 "Select Voltage",
-                 "DAC= ",
-                 &inputVal, 0, 5, 1, " V");
-      Serial.println(retVal);
-      Serial.println(inputVal);
-      // function to change value tds
+      
+      // function to change value tds;
     } else {
       if (tds_selection == 2) {
         // function to change value time running
@@ -86,17 +82,22 @@ void loop(void) {
   }
 }
 
-void set_tds_value() {
-
+void input_interface(uint32_t value, uint8_t confirm) {
+  
+  while 1:
+    {
+      delay(100);
+      
+    }
 }
 
-void section_choose(uint8_t selection, const char list) {
+void confirm_interface(uint8_t selection, const char list) {
   if ( selection == 0 ) {
     u8g2.userInterfaceMessage(
-      "Nothing selected.",
+      "Confirm.",
       "",
       "",
-      " ok ");
+      " Ok ");
   } else {
     u8g2.userInterfaceMessage(
       "Selection:",

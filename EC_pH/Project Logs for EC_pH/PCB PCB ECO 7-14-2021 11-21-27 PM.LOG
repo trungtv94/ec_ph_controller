@@ -1,0 +1,31 @@
+Added Component: Designator=C?(JP20-C2T)
+Add component (AddParameter): Name = "ComponentLink1 Description"; Value = "Manufacturer"; VariantName = "[No Variations]"
+Add component (AddParameter): Name = "ComponentLink1URL"; Value = "http://www.we-online.com"; VariantName = "[No Variations]"
+Add component (AddParameter): Name = "ComponentLink2 Description"; Value = "Datasheet"; VariantName = "[No Variations]"
+Add component (AddParameter): Name = "ComponentLink2URL"; Value = "http://katalog.we-online.de/em/datasheet/6130xx21821.pdf"; VariantName = "[No Variations]"
+Add component (AddParameter): Name = "Created by"; Value = "Karrer Zheng"; VariantName = "[No Variations]"
+Add component (AddParameter): Name = "Created Date"; Value = "29 March 2013"; VariantName = "[No Variations]"
+Add component (AddParameter): Name = "Manufacturer"; Value = "W¨¹rth Elektronik eiSos GmbH"; VariantName = "[No Variations]"
+Add component (AddParameter): Name = "NoPins"; Value = "40"; VariantName = "[No Variations]"
+Add component (AddParameter): Name = "partNo"; Value = "61304021821"; VariantName = "[No Variations]"
+Added Component: Designator=DS(LCD_CFAG12864S-YYH-VT)
+Add component (AddParameter): Name = "Availability"; Value = "Unavailable"; VariantName = "[No Variations]"
+Add component (AddParameter): Name = "MF"; Value = "Crystalfontz"; VariantName = "[No Variations]"
+Add component (AddParameter): Name = "MP"; Value = "CFAG12864S-YYH-VT"; VariantName = "[No Variations]"
+Add component (AddParameter): Name = "Package"; Value = "Package Analog Devices"; VariantName = "[No Variations]"
+Add component (AddParameter): Name = "Price"; Value = "None"; VariantName = "[No Variations]"
+Add component (AddParameter): Name = "SnapEDA_Link"; Value = "https://www.snapeda.com/parts/CFAG12864S-YYH-VT/Crystalfontz/view-part/4221990/?ref=snap"; VariantName = "[No Variations]"
+Add component (AddParameter): Name = "Value"; Value = ""; VariantName = "[No Variations]"
+Added Component: Designator=U(MODULE_MEGA_PRO_EMBED_CH340G_/_ATMEGA2560)
+Add component (AddParameter): Name = "Availability"; Value = "Unavailable"; VariantName = "[No Variations]"
+Add component (AddParameter): Name = "BuyPart"; Value = "https://www.snapeda.com/parts/Mega%20Pro%20Embed%20CH340G%20/%20ATmega2560/Robotdyn/view-part/4052597/?ref=eda"; VariantName = "[No Variations]"
+Add component (AddParameter): Name = "MF"; Value = "Robotdyn"; VariantName = "[No Variations]"
+Add component (AddParameter): Name = "MP"; Value = "Mega Pro Embed CH340G / ATmega2560"; VariantName = "[No Variations]"
+Add component (AddParameter): Name = "Package"; Value = "Package"; VariantName = "[No Variations]"
+Add component (AddParameter): Name = "Price"; Value = "None"; VariantName = "[No Variations]"
+Add component (AddParameter): Name = "SnapEDA_Link"; Value = "https://www.snapeda.com/parts/Mega%20Pro%20Embed%20CH340G%20/%20ATmega2560/Robotdyn/view-part/4052597/?ref=snap"; VariantName = "[No Variations]"
+Add component (AddParameter): Name = "Value"; Value = ""; VariantName = "[No Variations]"
+Added Member To Class: ClassName=Schematic Member=Component C? JP20x2
+Added Member To Class: ClassName=Schematic Member=Component DS CFAG12864S-YYH-VT
+Added Member To Class: ClassName=Schematic Member=Component U MEGA_PRO_EMBED_CH340G_/_ATMEGA2560
+Added Room: Name=Schematic

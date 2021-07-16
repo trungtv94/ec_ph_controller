@@ -1,10 +1,14 @@
 #include <EEPROM.h>
-int TDS_CALIB_ADDRESS = 0;
-int TDS_SET_ADDRESS = 10;
-int TDS_SET_PUMPS_ADDRESS = 40;
-int PH_CALIB_ADDRESS = 20;
-int PH_SET_ADDRESS = 30;
-int PH_SET_PUMPS_ADDRESS = 50;
+int TDS_CALIB_ADDRESS       = 0;
+int TDS_SET_ADDRESS         = 10;
+int TDS_SET_PUMPS_ADDRESS   = 20;
+int PH_NEUTRAL_ADDRESS      = 30;
+int PH_ACID_ADDRESS         = 40;
+int PH_SET_ADDRESS          = 50;
+int PH_SET_PUMPS_ADDRESS    = 60;
+
+// Time
+unsigned long TDS_CALIB_TIME = 30000;
 
 // define port
 #define TEMP_PORT A0
@@ -57,10 +61,9 @@ unsigned long int avgValue;
 // TDS metter initial
 #define VREF 5.0      // analog reference voltage(Volt) of the ADC
 #define SCOUNT  30           // sum of sample point
-int analogBuffer[SCOUNT];    // store the analog value in the array, read from ADC
-int analogBufferTemp[SCOUNT];
-int analogBufferIndex = 0, copyIndex = 0;
-float averageVoltage = 0;
+int     analogBuffer[SCOUNT];    // store the analog value in the array, read from ADC
+int     analogBufferIndex = 0, copyIndex = 0;
+float   averageVoltage = 0;
 
 // LCD Initial
 U8G2_ST7920_128X64_F_SW_SPI u8g2(U8G2_R0, /* clock=*/ 13, /* data=*/ 11, /* CS=*/ 10, /* reset=*/ 8);
@@ -71,6 +74,7 @@ float     A = 1.009249522e-03, B = 2.378405444e-04, C = 2.019202697e-07;
 
 // SENSOR Value
 float     pHvalue = 0;
+float     pH_avgVol = 0;
 float     temperature = 25, real_tdsValue = 0, tdsValue = 0;
 
 // SENSOR String Value
@@ -89,7 +93,10 @@ float     pH_set_value      = 7.0;
 uint8_t   retval_pump_pH    = 1;
 uint32_t  time_pump_pH      = 3;
 
+// Calibration value
 float     _kValue_tds       = 0.0;
+float     _acidVoltage      = 234.17;
+float     _neutralVoltage   = 404.44;
 
 String    current_scrren = "home";
 unsigned long  count_time = millis();
@@ -122,6 +129,9 @@ const char *calib_menu =
   "1.Calibration TDS   \n"
   "2.Calibration pH    ";
 
+const char *calib_pH_menu =
+  "1.Calibration at 4.0\n"
+  "2.Calibration at 7.0";
 
 // Selection Menu
 uint8_t main_selection = 0;
@@ -130,6 +140,7 @@ uint8_t pH_selection = 0;
 uint8_t pump_selection = 0;
 uint8_t on_off_pump = 0;
 uint8_t calib_selection = 1;
+uint8_t calib_pH_menu_selection = 1;
 
 // Other symbol
 const char DEGREE_SYMBOL[] = { 0xB0, '\0' };
@@ -159,26 +170,47 @@ void setup()
   pinMode(RELAY_03, OUTPUT);
   attachInterrupt(digitalPinToInterrupt(BUTTON_1), load_menu, LOW);
 
-  _kValue_tds = readStringFromEEPROM(TDS_CALIB_ADDRESS).toFloat();
-  tds_set_value = readStringFromEEPROM(TDS_SET_ADDRESS).toFloat();
-  pH_set_value = readStringFromEEPROM(PH_SET_ADDRESS).toFloat();
-  time_pump_pH = readStringFromEEPROM(PH_SET_PUMPS_ADDRESS).toInt();
-  time_pump_tds = readStringFromEEPROM(TDS_SET_PUMPS_ADDRESS).toInt();
+  _kValue_tds       = readStringFromEEPROM(TDS_CALIB_ADDRESS).toFloat();
+  tds_set_value     = readStringFromEEPROM(TDS_SET_ADDRESS).toFloat();
+  time_pump_tds     = readStringFromEEPROM(TDS_SET_PUMPS_ADDRESS).toInt();
+  pH_set_value      = readStringFromEEPROM(PH_SET_ADDRESS).toFloat();
+  time_pump_pH      = readStringFromEEPROM(PH_SET_PUMPS_ADDRESS).toInt();
+  _acidVoltage      = readStringFromEEPROM(PH_ACID_ADDRESS).toFloat();
+  _neutralVoltage   = readStringFromEEPROM(PH_NEUTRAL_ADDRESS).toFloat();
+
+  Serial.print("_kValue_tds: ");  Serial.println(_kValue_tds);
+  Serial.print("tds_set_value: ");  Serial.println(tds_set_value);
+  Serial.print("time_pump_tds: ");  Serial.println(time_pump_tds);
+  Serial.print("pH_set_value: ");  Serial.println(pH_set_value);
+  Serial.print("time_pump_pH: ");  Serial.println(time_pump_pH);
+  Serial.print("_neutralVoltage: ");  Serial.println(_neutralVoltage);
+  Serial.print("_acidVoltage: ");  Serial.println(_acidVoltage);
 }
 
 void load_menu() {
   detachInterrupt(digitalPinToInterrupt(BUTTON_1));
+  unsigned long cout_get_menu = 0;
   delay(100);
   for (;;) {
     int interrupts_status = digitalRead(BUTTON_1);
+    cout_get_menu++;
     if (interrupts_status == HIGH)
       break;
   }
-  if (current_scrren == "home")
-    current_scrren = "main_menu";
+  Serial.println(cout_get_menu);
+  if (cout_get_menu > 50000) {
+    Serial.println("Come to MENU");
+    if (current_scrren == "home") {
+      current_scrren = "main_menu";
+    }
+  }
+  else {
+    Serial.println("ReAttach");
+    attachInterrupt(digitalPinToInterrupt(BUTTON_1), load_menu, LOW);
+  }
 }
 
-float pHmetter()
+void get_avgVal()
 {
   for (int i = 0; i < 10; i++) //Get 10 sample value from the sensor for smooth the value
   {
@@ -191,18 +223,24 @@ float pHmetter()
     {
       if (buf[i] > buf[j])
       {
-        temp = buf[i];
+        int temp = buf[i];
         buf[i] = buf[j];
         buf[j] = temp;
       }
     }
   }
   avgValue = 0;
-  for (int i = 2; i < 8; i++)               //take the average value of 6 center sample
+  for (int i = 2; i < 8; i++) //take the average value of 6 center sample
     avgValue += buf[i];
-  float phValue = (float)avgValue * 5.0 / 1024 / 6; //convert the analog into millivolt
-  phValue = 3.5 * phValue;
-  return phValue;
+
+  pH_avgVol = (float)avgValue / 6;
+}
+
+float pHmetter() {
+  get_avgVal();
+  float slope = 3.0 / (_neutralVoltage - _acidVoltage);
+  float intercept = 7.0 - _neutralVoltage * slope;
+  return slope * pH_avgVol + intercept;
 }
 
 // Read Temperature senor
@@ -222,25 +260,21 @@ float read_tds_sensor() {
   } while (analogBufferIndex < SCOUNT);
   analogBufferIndex = 0;
 
-  for (copyIndex = 0; copyIndex < SCOUNT; copyIndex++)
-    analogBufferTemp[copyIndex] = analogBuffer[copyIndex];
-  averageVoltage = getMedianNum(analogBufferTemp, SCOUNT) * (float)VREF / 1024.0;
-  float compensationCoefficient = 1.0 + 0.02 * (temperature - 25.0);
+  averageVoltage = getMedianNum(analogBuffer) * (float)VREF / 1024.0;
+
+  float compensationCoefficient = 1.0; //+ 0.02 * (temperature - 25.0);
   float compensationVolatge = averageVoltage / compensationCoefficient;
   real_tdsValue = (133.42 * compensationVolatge * compensationVolatge * compensationVolatge - 255.86 * compensationVolatge * compensationVolatge + 857.39 * compensationVolatge) * 0.5;
 
   return real_tdsValue;
 }
 
-int getMedianNum(int bArray[], int iFilterLen)
+int getMedianNum(int bTab[])
 {
-  int bTab[iFilterLen];
-  for (byte i = 0; i < iFilterLen; i++)
-    bTab[i] = bArray[i];
   int i, j, bTemp;
-  for (j = 0; j < iFilterLen - 1; j++)
+  for (j = 0; j < SCOUNT - 1; j++)
   {
-    for (i = 0; i < iFilterLen - j - 1; i++)
+    for (i = 0; i < SCOUNT - j - 1; i++)
     {
       if (bTab[i] > bTab[i + 1])
       {
@@ -250,10 +284,10 @@ int getMedianNum(int bArray[], int iFilterLen)
       }
     }
   }
-  if ((iFilterLen & 1) > 0)
-    bTemp = bTab[(iFilterLen - 1) / 2];
+  if ((SCOUNT & 1) > 0)
+    bTemp = bTab[(SCOUNT - 1) / 2];
   else
-    bTemp = (bTab[iFilterLen / 2] + bTab[iFilterLen / 2 - 1]) / 2;
+    bTemp = (bTab[SCOUNT / 2] + bTab[SCOUNT / 2 - 1]) / 2;
   return bTemp;
 }
 
@@ -298,16 +332,16 @@ void auto_control_relay() {
 
 void check_stop_pumps() {
   int _is_tds_relay_start = digitalRead(RELAY_TDS);
-  if (_is_tds_relay_start == HIGH){
-    if ((unsigned long) (millis() - _time_tds_pumps_run) > (time_pump_tds * 1000)){
+  if (_is_tds_relay_start == HIGH) {
+    if ((unsigned long) (millis() - _time_tds_pumps_run) > (time_pump_tds * 1000)) {
       digitalWrite(RELAY_TDS, LOW);
       Serial.println("TDS STOP");
     }
   }
   int _is_pH_relay_start = digitalRead(RELAY_PH);
-  if (_is_pH_relay_start == true){
+  if (_is_pH_relay_start == true) {
     if ((unsigned long) (millis() - _time_pH_pumps_run) > (time_pump_pH * 1000)) {
-      digitalWrite(RELAY_PH, LOW);      
+      digitalWrite(RELAY_PH, LOW);
       Serial.println("pH STOP");
     }
   }
@@ -322,7 +356,7 @@ void loop() {
       check_stop_pumps();
 
       if (_is_first_start == true) {
-        if ((unsigned long) (millis() - time_sleep_count) > START_SLEEPING_TIME){
+        if ((unsigned long) (millis() - time_sleep_count) > START_SLEEPING_TIME) {
           _is_first_start = false;
         }
       } else {
@@ -334,9 +368,10 @@ void loop() {
         }
         auto_control_relay();
       }
-      Serial.print(_is_tds_pump_sleep); Serial.print(" pH: "); Serial.println(_is_pH_pump_sleep); 
+      Serial.print(_is_tds_pump_sleep); Serial.print(" pH: "); Serial.println(_is_pH_pump_sleep);
       delay(1000);
-    } else {
+    }
+    else {
       draw_menu();
     }
   } while ( u8g2.nextPage() );
@@ -366,7 +401,7 @@ void draw_base_text() {
   u8g2.drawStr(66, 10, "Temp.");
   u8g2.drawStr(105, 23, "C");
 
-  String pH_set_value_main = ""; 
+  String pH_set_value_main = "";
   pH_set_value_main = String(pH_set_value, 1);
   String pH_set_value_base_main = "pH (" + pH_set_value_main + ")";
   u8g2.drawStr(4, 42, pH_set_value_base_main.c_str());
@@ -447,26 +482,26 @@ void draw_menu() {
                        motor_menu);
     if (pump_selection == 0)
       current_scrren = "main_menu";
-    else { 
+    else {
       if (pump_selection == 1) {
         state_relay_pH = u8g2.userInterfaceSelectionList(
-                       "Pumps pH MENU",
-                       on_off_pump,
-                       on_off_menu);
+                           "Pumps pH MENU",
+                           on_off_pump,
+                           on_off_menu);
         if (state_relay_pH == 1)
           digitalWrite(RELAY_PH, HIGH);
-        else if (state_relay_pH == 2) 
+        else if (state_relay_pH == 2)
           digitalWrite(RELAY_PH, LOW);
         delay(200);
       } else if (pump_selection == 2) {
         state_relay_tds = u8g2.userInterfaceSelectionList(
-                       "Pumps TDS MENU",
-                       on_off_pump,
-                       on_off_menu);
+                            "Pumps TDS MENU",
+                            on_off_pump,
+                            on_off_menu);
         if (state_relay_tds == 1)
           digitalWrite(RELAY_TDS, HIGH);
-        else if (state_relay_tds == 2) 
-          digitalWrite(RELAY_TDS, LOW);           
+        else if (state_relay_tds == 2)
+          digitalWrite(RELAY_TDS, LOW);
         delay(200);
       }
       else if (pump_selection == 3) {
@@ -490,33 +525,82 @@ void draw_menu() {
         _kValue_tds = 1000 / calib_interface_tds();
         String string_kValue_tds = String(_kValue_tds, 3);
         writeStringToEEPROM(TDS_CALIB_ADDRESS, string_kValue_tds);
-        Serial.println(string_kValue_tds);
+        Serial.print("_kValue_tds: "); Serial.println(string_kValue_tds);
+        current_scrren = "calib_menu";
       }
       else if (calib_selection == 2)
-      {}//retval_pump_pH = input_interface_pump_pH();
-      // writeStringToEEPROM(PH_CALIB_ADDRESS, pH_Set_Value);
-      current_scrren = "calib_menu";
+        current_scrren = "calib_pH_menu";
     }
   }
+
+  if (current_scrren == "calib_pH_menu") {
+    calib_pH_menu_selection = u8g2.userInterfaceSelectionList(
+                                "Calibaration pH MENU",
+                                calib_pH_menu_selection,
+                                calib_pH_menu);
+    if (calib_pH_menu_selection == 0)  current_scrren = "calib_menu";
+    if (calib_pH_menu_selection == 1) {
+      _acidVoltage = calib_pH_at_4();
+      Serial.print("_acidVoltage calib: "); Serial.println(_acidVoltage);
+      String string_acidVoltage = String(_acidVoltage, 2);
+      writeStringToEEPROM(PH_ACID_ADDRESS, string_acidVoltage);
+    } else if (calib_pH_menu_selection == 2) {
+      _neutralVoltage = calib_pH_at_7();
+      Serial.print("_neutralVoltage calib: "); Serial.println(_neutralVoltage);
+      String string_neutralVoltage = String(_neutralVoltage, 2);
+      writeStringToEEPROM(PH_NEUTRAL_ADDRESS, string_neutralVoltage);
+    }
+    (current_scrren == "calib_pH_menu");
+  }
+}
+
+float calib_pH_at_4() {
+  int calib_pH4_count = 0;
+  float total_pH4_calib = 0.0;
+  do {
+    u8g2.clearBuffer();
+    u8g2.drawStr(18, 34, "Calibrating . . .");
+    get_avgVal();
+    total_pH4_calib = total_pH4_calib + pH_avgVol;
+    calib_pH4_count ++;
+    delay(1000);
+    if (calib_pH4_count > 10)
+      return total_pH4_calib / calib_pH4_count;
+  } while ( not u8g2.nextPage());
+}
+
+float calib_pH_at_7() {
+  int calib_pH7_count = 0;
+  float total_pH7_calib = 0.0;
+  do {
+    u8g2.clearBuffer();
+    u8g2.drawStr(18, 34, "Calibrating . . .");
+    get_avgVal();
+    total_pH7_calib = total_pH7_calib + pH_avgVol;
+    calib_pH7_count ++;
+    delay(1000);
+    if (calib_pH7_count > 10)
+      return total_pH7_calib / calib_pH7_count;
+  } while ( not u8g2.nextPage());
 }
 
 float calib_interface_tds() {
 
-  unsigned long time = millis();
+  unsigned long time_calib = millis();
   unsigned long total = 0;
   int _count = 0;
-  
-  u8g2.clearBuffer();
-  u8g2.drawStr(18, 34, "Calibrating . . .");
 
   do {
     u8g2.clearBuffer();
     u8g2.drawStr(18, 34, "Calibrating . . .");
 
-    total = total + read_tds_sensor();
+    float _real_val_tds = read_tds_sensor();
+    total = total + _real_val_tds;
     _count ++;
 
-    if ((unsigned long) (millis() - time) > 30000) {
+    Serial.print("_real_val_tds: "); Serial.println(_real_val_tds);
+
+    if ((unsigned long) (millis() - time_calib) > TDS_CALIB_TIME) {
       return (total / _count);
     }
     delay(1000);
@@ -530,6 +614,7 @@ uint8_t input_interface_tds() {
   do {
     String tds_set_value_string = "";
     if (is_tds_update == true) {
+      u8g2.clearBuffer();
       u8g2.drawStr(4, 10, "  SET TDS POINT:");
       u8g2.drawFrame(0, 26, 128, 20);
       is_tds_update = false;
@@ -574,12 +659,15 @@ uint8_t input_interface_pump_tds() {
   do {
     String pump_tds_set_value_string = "";
     if (is_pump_tds_update == true) {
+      u8g2.clearBuffer();
       u8g2.drawStr(4, 10, "  SET TDS Pump POINT:");
       u8g2.drawFrame(0, 26, 128, 20);
       is_pump_tds_update = false;
       pump_tds_set_value_string.concat(local_pump_tds);
-      int start_pump_tds = 55 - pump_tds_set_value_string.length() % 2;
+      int start_pump_tds = 55 - pump_tds_set_value_string.length() * 5;
+      Serial.println(pump_tds_set_value_string.length());
       u8g2.drawStr(start_pump_tds, 39, pump_tds_set_value_string.c_str());
+      u8g2.drawStr(60, 39, "seconds");
       delay(100);
     }
 
@@ -618,6 +706,7 @@ uint8_t input_interface_pH() {
   do {
     String pH_set_value_string = "";
     if (is_pH_update == true) {
+      u8g2.clearBuffer();
       u8g2.drawStr(4, 10, "  SET pH POINT:");
       u8g2.drawFrame(0, 26, 128, 20);
       is_pH_update = false;
@@ -630,7 +719,7 @@ uint8_t input_interface_pH() {
     int buttotnStatus0 = digitalRead(BUTTON_0);
     if (buttotnStatus0 == LOW) {
       pH_set_value = local_pH;
-      String eeprom_string_pH_set_value = String(pH_set_value,1);
+      String eeprom_string_pH_set_value = String(pH_set_value, 1);
       writeStringToEEPROM(PH_SET_ADDRESS, eeprom_string_pH_set_value);
       delay(100);
       return 1;
@@ -662,12 +751,14 @@ uint8_t input_interface_pump_pH() {
   do {
     String pump_pH_set_value_string = "";
     if (is_pump_pH_update == true) {
+      u8g2.clearBuffer();
       u8g2.drawStr(4, 10, "  SET pH Pump POINT:");
       u8g2.drawFrame(0, 26, 128, 20);
       is_pump_pH_update = false;
       pump_pH_set_value_string.concat(local_pump_pH);
-      int start_pump_pH = 55 - pump_pH_set_value_string.length() % 2;
+      int start_pump_pH = 55 - pump_pH_set_value_string.length() * 5;
       u8g2.drawStr(start_pump_pH, 39, pump_pH_set_value_string.c_str());
+      u8g2.drawStr(60, 39, "seconds");
       delay(100);
     }
 
@@ -699,8 +790,7 @@ uint8_t input_interface_pump_pH() {
   } while ( not u8g2.nextPage());
 }
 
-void writeStringToEEPROM(int addrOffset, const String &strToWrite)
-{
+void writeStringToEEPROM(int addrOffset, const String &strToWrite) {
   byte len = strToWrite.length();
   EEPROM.write(addrOffset, len);
   for (int i = 0; i < len; i++)
@@ -709,8 +799,7 @@ void writeStringToEEPROM(int addrOffset, const String &strToWrite)
   }
 }
 
-String readStringFromEEPROM(int addrOffset)
-{
+String readStringFromEEPROM(int addrOffset) {
   int newStrLen = EEPROM.read(addrOffset);
   char data[newStrLen + 1];
   for (int i = 0; i < newStrLen; i++)

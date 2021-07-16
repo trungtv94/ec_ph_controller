@@ -1,0 +1,9 @@
+Added Component: Designator=DS(LCD_CFAG12864S-YYH-VT)
+Add component (AddParameter): Name = "Availability"; Value = "Unavailable"; VariantName = "[No Variations]"
+Add component (AddParameter): Name = "MF"; Value = "Crystalfontz"; VariantName = "[No Variations]"
+Add component (AddParameter): Name = "MP"; Value = "CFAG12864S-YYH-VT"; VariantName = "[No Variations]"
+Add component (AddParameter): Name = "Package"; Value = "Package Analog Devices"; VariantName = "[No Variations]"
+Add component (AddParameter): Name = "Price"; Value = "None"; VariantName = "[No Variations]"
+Add component (AddParameter): Name = "SnapEDA_Link"; Value = "https://www.snapeda.com/parts/CFAG12864S-YYH-VT/Crystalfontz/view-part/4221990/?ref=snap"; VariantName = "[No Variations]"
+Add component (AddParameter): Name = "Value"; Value = ""; VariantName = "[No Variations]"
+Added Member To Class: ClassName=Schematic Member=Component DS CFAG12864S-YYH-VT
